@@ -84,10 +84,10 @@ def getParam():
     db.close()
 
 def paramsRequest():
-    depAirportCode = "urc"
-    arrAirportCode = "cgo"
-    depAirportName = "乌鲁木齐"
-    arrAirportName = "郑州"
+    depAirportCode = "cgo"
+    arrAirportCode = "urc"
+    depAirportName = "郑州"
+    arrAirportName = "乌鲁木齐"
     getData(depAirportCode, arrAirportCode, depAirportName, arrAirportName)
 
 def main():
