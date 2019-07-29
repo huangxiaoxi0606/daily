@@ -5,13 +5,12 @@
 # @Site : 
 # @File : weibo.py
 # @Software: PyCharm
-# 1.视频
-# 2.过多数据抓取是要分批次
+# 更新的时候
 from urllib.parse import quote,unquote
 import requests
 import json
 import pymysql
-import datetime
+import datetime,time
 
 def getData(url,type):
     response = requests.get(url=url)
@@ -23,7 +22,7 @@ def getData(url,type):
     return data
 
 # 微信内容存进mysql
-def saveMysql(data):
+def saveMysql(data,new):
     config = {
         "host": "127.0.0.1",
         "user": "root",
@@ -37,15 +36,18 @@ def saveMysql(data):
     cursor = db.cursor()
 
     for index in data:
+        # if new['new'] == 0 and int(index['mblog']['id']) <= int(new['w_count']):
+        #     print('无更新')
+        #     exit(0)
         thumbnail_pic = original_pic = source = ''
         last_id = 0
         if 'retweeted_status' in index['mblog']:
-            if 'thumbnail_pic' in index['mblog']:
-                thumbnail_pic = index['mblog']['thumbnail_pic']
-            if 'original_pic' in index['mblog']:
-                original_pic = index['mblog']['original_pic']
-            if 'source' in index['mblog']:
-                source = index['mblog']['source']
+            if 'thumbnail_pic' in index['mblog']['retweeted_status']:
+                thumbnail_pic = index['mblog']['retweeted_status']['thumbnail_pic']
+            if 'original_pic' in index['mblog']['retweeted_status']:
+                original_pic = index['mblog']['retweeted_status']['original_pic']
+            if 'source' in index['mblog']['retweeted_status']:
+                source = index['mblog']['retweeted_status']['source']
             zlen = len(index['mblog']['retweeted_status']['created_at'].split('-')) - 1
             if zlen == 2:
                 zb_created_at = index['mblog']['retweeted_status']['created_at']
@@ -93,7 +95,14 @@ def saveMysql(data):
                     "(%s,%s,%s)",
                     (index['mblog']['id'], pic['url'], dataTime))
                 db.commit()
-
+        else:
+            # 保存视频
+            if 'page_info' in index['mblog']:
+                cursor.execute(
+                    "insert into weibo_videos(weibo_info_id,url,created_at)values"
+                    "(%s,%s,%s)",
+                    (index['mblog']['id'], index['mblog']['page_info']['page_url'], dataTime))
+                db.commit()
     cursor.close()
     db.close()
 
@@ -121,12 +130,25 @@ def saveUserToMysql(data):
         cursor.close()
         db.close()
         print('userInfo')
-    print('isHave')
+        print('isHave')
+        return {'new': 1, 'w_count': 0}
+    else:
+        info_count = cursor.execute(
+            "select `weibo_info_id` from weibos where weibo_id='%s' and is_flag ='%s'" % (data['id'], 0))
+        if info_count == 0:
+            info_id = 0
+        else:
+            info_id = cursor.fetchone()[0]
+        return {'new': 0, 'w_count': info_id}
+
 
 # 主程序
 def main():
-    uid = ''
-    q = ''
+    # [uid :1751035982,q:田馥甄]
+    # [uid :1836758555,q:Hhx_06]
+
+    uid = '1822796164'
+    q = '吴青峰'
 
     luicode = '10000011'
     all = '100103type= 1&q=' + q
@@ -140,17 +162,22 @@ def main():
     url1 = 'https://m.weibo.cn/api/container/getIndex?uid={}&luicode={}&lfid={}&type={}&value={}&containerid={}'.format(
         uid, luicode, lfid, type, value, containerid1)
     data1 = getData(url1,1)
-    saveUserToMysql(data1)
+    new = saveUserToMysql(data1)
     count = data1['statuses_count']
     h = int(count/10)+1
+    print(h)
+    # h = 80
     # 此处需解决数目大的时候
-    for i in range(1,h):
-        print(i)
-        url2 = 'https://m.weibo.cn/api/container/getIndex?uid={}&luicode={}&lfid={}&type={}&value={}&containerid={}&page={}'.format(
-            uid, luicode, lfid, type, value, containerid2, i)
-        data2 = getData(url2,0)
-        if len(data2) >0:
-            saveMysql(data2)
+    for t in range(41, h,20):
+        for i in range(t, t + 20):
+            print(i)
+            print('已完成')
+            url2 = 'https://m.weibo.cn/api/container/getIndex?uid={}&luicode={}&lfid={}&type={}&value={}&containerid={}&page={}'.format(
+                uid, luicode, lfid, type, value, containerid2, i)
+            data2 = getData(url2,0)
+            if len(data2) > 0:
+                saveMysql(data2,new)
+        time.sleep(10)
     print('endWeiBoInfo')
     exit(0)
 if __name__ == '__main__':
