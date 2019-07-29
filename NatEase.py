@@ -13,17 +13,16 @@ import requests
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 import os
+import pymysql
+import time,datetime
 chrome_driver = r"D:\daily\chromedriver_win32\chromedriver.exe"
 driver = webdriver.Chrome(executable_path=chrome_driver)
 # timeout:超出时间，等待的最长时间(同时要考虑隐形等待时间)
 # 显示等待
 wait = WebDriverWait(driver, 5)
 proxies = {
-    "http": "http://114.101.41.85:65309",
-    'https':"http://123.117.38.47:9000",
+    'https':"http://218.60.8.99:3129",
 }
-
-
 
 class Musci_info(object):
     def __init__(self, id):
@@ -41,17 +40,35 @@ class Musci_info(object):
             os.makedirs(path)
         tr_list = driver.find_element_by_id("hotsong-list").find_elements_by_tag_name("tr")
         music_info = []
+        now = datetime.datetime.now()
+        dataTime = now.strftime("%Y-%m-%d %H:%M:%S")
         for i in range(len(tr_list)):
             content = tr_list[i].find_element_by_class_name('txt')
             href = content.find_element_by_tag_name('a').get_attribute('href')
             title = content.find_element_by_tag_name('b').get_attribute('title')
-            music_info.append((title, href, artist_name))
+            music_info.append([title, href,str(self.id), artist_name,dataTime])
         return music_info, path
     def save_csv(self, music_info, path, heads=None):
         data = pd.DataFrame(music_info,columns=heads)
-        data['sid'] = str(self.id)
         # index=False去掉DataFrame默认的index列
-        data.to_csv("{0}\\singer{1}.csv".format(path,str(self.id)), index=0, sep=',')
+        data.to_csv("{0}\\singer{1}.csv".format(path,str(self.id)), index=False, sep=',')
+        # 数据库批量插入
+
+
+    def save_to_mysql(self,music_info):
+        conn = pymysql.connect(host='localhost', user='root', password='root')
+        # pymysql.charset = 'gbk'
+        cur = conn.cursor()
+        conn.select_db('hhx')
+        try:
+            cur.executemany("insert into net_eases(songName,songUrl,singNo,singName,created_at) values(%s,%s,%s,%s,%s)", music_info)
+            conn.commit()
+        except Exception as err:
+            print(err)
+        finally:
+            cur.close()
+            conn.close()
+
 class Download_Music(object):
     def __init__(self, music_name, music_id, path):
         self.music_name = music_name
@@ -88,9 +105,8 @@ def main(id):
     singer_id = id # 歌手id，自定义修改--根据自己爬取的歌手选择
     mu_info = Musci_info(singer_id) # 类初始化
     music_info, path = mu_info.get_music_info()# 调用方法，获取音乐信息及路径
-    print(music_info)
-    print(path)
-    mu_info.save_csv(music_info, path, heads=['music', 'link', 'artist_name'])# 存储音乐的歌名及链接至csv文件
+    # mu_info.save_csv(music_info, path, heads=['music', 'link','id', 'artist_name','created_at'])# 存储音乐的歌名及链接至csv文件
+    mu_info.save_to_mysql(music_info)
     '''
     调用pandas的read_csv()方法时，默认使用C engine作为parser engine，而当文件名中含有中文的时候,就会报错，
     这里一定要设置engine为python，即engine='python'
@@ -129,7 +145,7 @@ def main(id):
         '''
         regex = re.compile(r'(id)(=)(.*)')
         print('--------------------')
-        link = re.search(regex, mu['link']).group(3)
+        # link = re.search(regex, mu['link']).group(3)
         print('--------------------')
         # music = Download_Music(music, link, path)
         # music.save_txt()
@@ -137,4 +153,4 @@ def main(id):
 
 
 if __name__ == '__main__':
-    main(3685)
+    main(3684)
