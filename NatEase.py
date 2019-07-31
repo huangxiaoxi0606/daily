@@ -21,7 +21,7 @@ driver = webdriver.Chrome(executable_path=chrome_driver)
 # 显示等待
 wait = WebDriverWait(driver, 5)
 proxies = {
-    'https':"http://218.60.8.99:3129",
+    'https':"http://125.123.122.158:9000",
 }
 
 class Musci_info(object):
@@ -79,10 +79,14 @@ class Download_Music(object):
         url = 'http://music.163.com/api/song/lyric?' + 'id=' + str(self.music_id) + '&lv=1&kv=1&tv=-1'
         r = requests.get(url,proxies=proxies,verify=False)
         raw_json = r.text
+
         ch_json = json.loads(raw_json)
-        raw_lyric = ch_json['lrc']['lyric']
-        del_str = re.compile(r'\[.*\]')
-        ch_lyric = re.sub(del_str, '', raw_lyric)
+        if 'lrc' in ch_json:
+            raw_lyric = ch_json['lrc']['lyric']
+            del_str = re.compile(r'\[.*\]')
+            ch_lyric = re.sub(del_str, '', raw_lyric)
+        else:
+            ch_lyric =''
         return ch_lyric
     def download_mp3(self):
         url = 'http://music.163.com/song/media/outer/url?id=' + str(self.music_id) + '.mp3'
@@ -95,17 +99,20 @@ class Download_Music(object):
 
     def save_txt(self):
         lyric = self.get_lyric()
-        print("正在写入歌曲：{0}".format(self.music_name))
-        print(lyric)
-        with open("{0}/{1}.txt".format(self.path, self.music_name), 'w', encoding='utf-8') as f:
-            f.write(lyric)
+        if not lyric:
+            print('wu')
+        else:
+            print("正在写入歌曲：{0}".format(self.music_name))
+            print(lyric)
+            with open("{0}/{1}.txt".format(self.path, self.music_name), 'w', encoding='utf-8') as f:
+                f.write(lyric)
 
 
 def main(id):
     singer_id = id # 歌手id，自定义修改--根据自己爬取的歌手选择
     mu_info = Musci_info(singer_id) # 类初始化
     music_info, path = mu_info.get_music_info()# 调用方法，获取音乐信息及路径
-    # mu_info.save_csv(music_info, path, heads=['music', 'link','id', 'artist_name','created_at'])# 存储音乐的歌名及链接至csv文件
+    mu_info.save_csv(music_info, path, heads=['music', 'link','id', 'artist_name','created_at'])# 存储音乐的歌名及链接至csv文件
     mu_info.save_to_mysql(music_info)
     '''
     调用pandas的read_csv()方法时，默认使用C engine作为parser engine，而当文件名中含有中文的时候,就会报错，
@@ -145,12 +152,12 @@ def main(id):
         '''
         regex = re.compile(r'(id)(=)(.*)')
         print('--------------------')
-        # link = re.search(regex, mu['link']).group(3)
+        link = re.search(regex, mu['link']).group(3)
         print('--------------------')
-        # music = Download_Music(music, link, path)
-        # music.save_txt()
-        # music.download_mp3()
+        music = Download_Music(music, link, path)
+        music.save_txt()
+        music.download_mp3()
 
 
 if __name__ == '__main__':
-    main(3684)
+    main(12709)
