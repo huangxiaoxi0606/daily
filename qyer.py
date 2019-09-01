@@ -30,7 +30,7 @@ def getParse(data_us):
     return arr,urls
 
 def saveToMysql(arr):
-    conn = pymysql.connect(host='localhost', user='root', password ='Mac#hhx03*Hebe')
+    conn = pymysql.connect(host='localhost', user='root', password ='root')
     cur = conn.cursor()
     conn.select_db('hhx')
     cur.executemany("insert into qyers(post_id,face,forumsname,image,last_post_time,likeNumber,post,subject,total_replies,type,typename,username,viewNumber,url,created_at)values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",arr)
