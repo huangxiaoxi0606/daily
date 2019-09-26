@@ -10,7 +10,13 @@ from bs4 import BeautifulSoup
 import pymysql
 import datetime,time
 
+
 def getHtml(url):
+    """
+    解析页面html
+    :param url:
+    :return:
+    """
     headers = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
         'Accept - Encoding': 'gzip, deflate, br',
@@ -23,6 +29,11 @@ def getHtml(url):
     return node
 
 def parseList(node):
+    """
+    解析列表页面
+    :param node:
+    :return:
+    """
     lists = node.find('ol')
     list = lists.find_all('li')
     urls = []
@@ -48,6 +59,10 @@ def parseList(node):
     return data_us,urls
 
 def listToMysql(data):
+    """
+    列表数据存入数据库
+    :param data:
+    """
     conn = pymysql.connect(host='localhost', user='root', password='root')
     cur = conn.cursor()
     conn.select_db('hhx')
@@ -63,12 +78,20 @@ def listToMysql(data):
         conn.close()
 
 def parseUrl(urls):
+    """
+    解析页面url
+    :param urls:
+    """
     for url in urls:
         nodes = getHtml(url)
         parseContent(nodes)
 
 
 def parseContent(nodes):
+    """
+    页面数据存入数据库
+    :param nodes:
+    """
     hh = nodes.find(id="content")
     year = hh.find("span", attrs={"class": "year"}).string
     s1 = hh.find(id="info")
@@ -119,7 +142,11 @@ def parseContent(nodes):
         conn.close()
 
 def main():
-    hh = ['0','25','50','75','100','125','150','175','200','225','250']
+    """
+    主程序
+    """
+    hh = ['0', '25', '50', '75', '100', '125', '150', '175', '200', '225']
+
     for h in hh:
         url = 'https://movie.douban.com/top250?start='+h+'&filter='
         node = getHtml(url)
