@@ -52,10 +52,14 @@ def writeMysql(data):
 
 
 def main():
-    name =''
+    name ='陈珊妮'
     url = "https://www.228.com.cn/s/"+name + "/?j=1&p=1"
     data = (json.loads(getData(url))["products"])
-    writeMysql(data)
-    print('ya')
+    if(len(data)>0):
+        writeMysql(data)
+        print('ya')
+    else:
+        print('no')
+
 
 main()

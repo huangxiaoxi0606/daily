@@ -11,11 +11,21 @@ import json
 import pymysql
 
 def getHtml(url):
+    """
+    获取数据
+    :param url:
+    :return:
+    """
     response = requests.get(url)
     data_us = json.loads(response.text[6:-1])["data"]["flights"]
     return data_us
 
 def parseData(data_us):
+    """
+    解析获得的数据
+    :param data_us:
+    :return:
+    """
     data_info = []
     now = datetime.datetime.now()
     dataTime = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -26,6 +36,10 @@ def parseData(data_us):
     return data_info
 
 def save_to_mysql(data_info):
+    """
+    保存数据库
+    :param data_info:
+    """
     conn = pymysql.connect(host='localhost', user='root', password='root')
     cur = conn.cursor()
     conn.select_db('hhx')
@@ -42,6 +56,9 @@ def save_to_mysql(data_info):
 
 
 def main():
+    """
+    未来30天郑州特价航班
+    """
     today = time.strftime("%Y-%m-%d",time.localtime(time.time()))
     startDate = today
     endDate = time.strftime("%Y-%m-%d",time.localtime(time.time()+3600*24*30))
@@ -51,16 +68,5 @@ def main():
     data_info = parseData(data_us)
     save_to_mysql(data_info)
     print('end')
-
-
-
-
-
-
-
-
-
-
-
 
 main()
