@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# @Time : 2019/9/29 15:37
+# @Time : 2019/10/31 11:19
 # @Author : hhx06
 # @Site : 
 # @File : maoyan.py
 # @Software: PyCharm
 import requests
 from bs4 import BeautifulSoup
-import pickle
+import datetime,time
+import pymysql
+import json
 
 def getHtml(url):
     headers = {
@@ -19,51 +21,71 @@ def getHtml(url):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36'}
     response = requests.get(url, headers=headers)
     node = BeautifulSoup(response.text, 'html.parser')
-    return  node
 
+    return node
 
-def parseList(node):
-    node1 = node.find('dl')
-    node2 = node1.find_all('div', attrs={"class": "movie-item"})
-    urls =[]
-    for n in node2:
-        href = n.a['href']
+def getList(node):
+
+    tt = node.find("dl", attrs={"class": "movie-list"})
+    list = tt.find_all("div", attrs={"class": "movie-item"})
+    urls = []
+    for li in list:
+        href = li.a['href']
         urls.append(href)
-
-
     return urls
 
-def parseContent(nodes):
-    tt = nodes.find("div", attrs={"class": "avatar-shadow"})
-    img= tt.img['src']
-    name = nodes.find("h3", attrs={"class": "name"}).string
-    w_name = nodes.find("div", attrs={"class": "ename"}).string
-    w = nodes.find_all("li", attrs={"class": "ellipsis"})
-    type = w[0].string
-    time_long = w[1].string
-    release = w[2].string
-    intro = nodes.find("span", attrs={"class": "dra"}).string
-    ww = nodes.find_all("div", attrs={"class": "celebrity-group"})
-    r = ww[0].find_all("div", attrs={"class": "info"})
-    d = nodes.find_all("ul",attrs={"class":"celebrity-list"})
-    celebrity = d[0].get_text()
-    actor = d[1].get_text()
-    uu = nodes.find_all("li", attrs={"class": "comment-container"})
-    comment =[]
-    for u in uu:
-        comment.append(u.find("div", attrs={"class": "comment-content"}).string)
 
-    print(img,name,w_name,type,time_long,release,intro,celebrity,actor)
-    exit(0)
+def getContent(node,maoyan_id):
 
+    banner = node.find('div', attrs={"class": "banner"})
+    cover = banner.find('div', attrs={"class": "avatar-shadow"}).img['src']
+    name = banner.find('h3', attrs={"class": "name"}).string + '/' + banner.find('div', attrs={"class": "ename"}).string
+    ul = banner.find_all('li', attrs={"class": "ellipsis"})
+    type = ul[0].string
+    date = ul[2].string
+    arr = ul[1].string.strip().split('/')
+    area = arr[0]
+    timelong = arr[1]
+    intro = node.find('span', attrs={"class": "dra"}).string
+    director = node.find('ul', attrs={"class": "celebrity-list"}).get_text().strip()
+    arrs = node.find_all('li', attrs={"class": "actor"})
+    actor = ''
+    now = datetime.datetime.now()
+    dataTime = now.strftime("%Y-%m-%d %H:%M:%S")
+    for ar in arrs:
+        actor = actor + ar.find('a', attrs={"class": "name"}).get_text().strip() + '/'
+    data_us = [maoyan_id, cover, name, type, date, area, timelong, intro, director, actor, dataTime,'1']
+
+    return data_us
+
+def saveToMysql(data):
+    conn = pymysql.connect(host='localhost', user='root', password='root')
+    cur = conn.cursor()
+    conn.select_db('hhx')
+    try:
+        cur.executemany(
+            "insert into mao_yans(maoyan_id,cover,name,type,date,area,timelong,intro,director,actor,created_at,mold) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            data)
+        conn.commit()
+
+    except Exception as err:
+        print(err)
+    finally:
+        cur.close()
+        conn.close()
 
 def main():
-    url = 'https://maoyan.com/films'
+    url = 'https://maoyan.com/films?showType=1'
     node = getHtml(url)
-    urls = parseList(node)
-    for u in urls:
-        u1 = 'https://maoyan.com'+u
-        nodes = getHtml(u1)
-        parseContent(nodes)
-
+    urls = getList(node)
+    url_pre = 'https://maoyan.com'
+    data = []
+    for url1 in urls:
+        maoyan_id = url1.split('/')[2]
+        url1 = url_pre + url1
+        node1 = getHtml(url1)
+        con = getContent(node1,maoyan_id)
+        data.append(con)
+    saveToMysql(data)
+    print('end')
 main()
